@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLO Vision Studio | Real-Time Object & Weld Inspection</title>
+    <meta name="description" content="Professional computer vision dashboard for real-time YOLO object detection and weld defect analysis.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Application Stylesheet -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="dark-theme">
+    <!-- App Container -->
+    <div class="app-layout">
+        
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="brand-logo">
+                    <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 12h20M12 2v20M7 7l10 10M17 7L7 17"/>
+                        <circle cx="12" cy="12" r="4"/>
+                    </svg>
+                    <div class="brand-glow"></div>
+                </div>
+                <div class="brand-text">
+                    <div class="brand-title-wrap">
+                        <h1 class="brand-title">YOLO Vision Studio</h1>
+                        <span class="brand-badge">WELD & VISION AI</span>
+                    </div>
+                    <p class="brand-subtitle">Real-Time Object Detection & Defect Inspection</p>
+                </div>
+            </div>
+
+            <!-- Header Status Indicators -->
+            <div class="header-status">
+                <div class="status-pill status-pill-online" id="backendStatusPill" title="Flask Backend Status">
+                    <span class="status-dot"></span>
+                    <span class="status-label" id="backendStatusText">Backend Online</span>
+                </div>
+
+                <div class="status-pill status-pill-model" id="modelPill" title="Active YOLO Weights">
+                    <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                        <line x1="12" y1="22.08" x2="12" y2="12"/>
+                    </svg>
+                    <span class="status-label" id="activeModelName">{{ model_name }}</span>
+                </div>
+
+                <div class="status-pill status-pill-device" id="devicePill" title="Inference Accelerator">
+                    <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="4" y="4" width="16" height="16" rx="2"/>
+                        <rect x="9" y="9" width="6" height="6"/>
+                        <line x1="9" y1="1" x2="9" y2="4"/>
+                        <line x1="15" y1="1" x2="15" y2="4"/>
+                        <line x1="9" y1="20" x2="9" y2="23"/>
+                        <line x1="15" y1="20" x2="15" y2="23"/>
+                        <line x1="20" y1="9" x2="23" y2="9"/>
+                        <line x1="20" y1="14" x2="23" y2="14"/>
+                        <line x1="1" y1="9" x2="4" y2="9"/>
+                        <line x1="1" y1="14" x2="4" y2="14"/>
+                    </svg>
+                    <span class="status-label" id="inferenceDevice">{{ device }}</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs" role="tablist">
+            <button class="nav-tab active" id="tabImageBtn" data-target="imageMode" role="tab" aria-selected="true">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <span>Image Detection</span>
+            </button>
+            <button class="nav-tab" id="tabWebcamBtn" data-target="webcamMode" role="tab" aria-selected="false">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="23 7 16 12 23 17 23 7"/>
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                </svg>
+                <span>Live Webcam</span>
+                <span class="tab-live-badge">REAL-TIME</span>
+            </button>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="content-container">
+
+            <!-- ========================================== -->
+            <!-- MODE 1: IMAGE DETECTION TAB               -->
+            <!-- ========================================== -->
+            <section class="mode-view active" id="imageMode" role="tabpanel">
+                
+                <!-- SECTION 1: Detection Toolbar & Quick Test Samples -->
+                <div class="glass-panel controls-bar">
+                    <div class="controls-left">
+                        <!-- Confidence Threshold Slider -->
+                        <div class="control-group">
+                            <div class="control-label-wrap">
+                                <label for="imageConfSlider">Confidence Threshold</label>
+                                <span class="badge-value" id="imageConfValue">25%</span>
+                            </div>
+                            <input type="range" id="imageConfSlider" min="5" max="95" value="25" step="1" class="custom-slider">
+                        </div>
+
+                        <!-- IoU Threshold Slider -->
+                        <div class="control-group">
+                            <div class="control-label-wrap">
+                                <label for="imageIouSlider">IoU Threshold</label>
+                                <span class="badge-value" id="imageIouValue">45%</span>
+                            </div>
+                            <input type="range" id="imageIouSlider" min="10" max="90" value="45" step="5" class="custom-slider">
+                        </div>
+                    </div>
+
+                    <!-- Toolbar Actions: Upload Image, Clear Image, Download Result -->
+                    <div class="controls-right">
+                        <button class="btn btn-primary" id="btnTopUploadImage" title="Select and upload an image for immediate detection">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            <span>Upload Image</span>
+                        </button>
+
+                        <button class="btn btn-secondary" id="btnResetImage" disabled title="Clear image, detections, and reset panels">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                <path d="M3 3v5h5"/>
+                            </svg>
+                            <span>Clear Image</span>
+                        </button>
+
+                        <button class="btn btn-secondary" id="btnDownloadAnnotated" disabled title="Download processed detection image">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            <span>Download Result</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Samples Bar -->
+                <div class="samples-bar">
+                    <span class="samples-label">Quick Test Samples:</span>
+                    <div class="samples-list" id="samplesList">
+                        <button class="sample-chip" data-sample="sample_defect_crack.jpg">
+                            <span class="chip-dot dot-defect"></span> Hot Crack Defect
+                        </button>
+                        <button class="sample-chip" data-sample="sample_bad_weld.jpg">
+                            <span class="chip-dot dot-bad"></span> Bad Weld Sample
+                        </button>
+                        <button class="sample-chip" data-sample="sample_weld_joint.jpg">
+                            <span class="chip-dot dot-joint"></span> Weld Joint Sample
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SECTION 2: Two-Column Image Comparison -->
+                <div class="two-column-grid">
+                    
+                    <!-- Left Panel: Original Source -->
+                    <div class="glass-panel image-panel">
+                        <div class="panel-header">
+                            <div class="panel-title-wrap">
+                                <h3 class="panel-title">Original Source</h3>
+                                <span class="panel-subtitle" id="uploadStatusBadge">Awaiting Image</span>
+                            </div>
+                            <div class="panel-actions">
+                                <button class="btn btn-sm btn-ghost" id="btnBrowseOriginal" title="Browse image from device">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="17 8 12 3 7 8"/>
+                                        <line x1="12" y1="3" x2="12" y2="15"/>
+                                    </svg>
+                                    <span>Browse</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Original Viewer Container -->
+                        <div class="source-viewer" id="originalViewer">
+                            <!-- Empty state before image selection -->
+                            <div class="empty-source-state" id="originalEmptyState">
+                                <div class="empty-icon-box">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                                        <polyline points="21 15 16 10 5 21"/>
+                                    </svg>
+                                </div>
+                                <h4>No Image Loaded</h4>
+                                <p>Select a quick test sample from above or upload an image below to automatically run YOLO inspection.</p>
+                            </div>
+
+                            <!-- Preview of Original Image -->
+                            <div class="preview-wrapper" id="originalPreviewWrapper" style="display: none;">
+                                <img id="originalImagePreview" alt="Original Source Image" class="responsive-preview-img">
+                                <div class="image-meta-bar" id="originalMetaBar">
+                                    <span id="originalFileName">image.jpg</span>
+                                    <span id="originalDims">0 × 0 px</span>
+                                    <span id="originalFileSize">0 KB</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel: YOLO Detection Result -->
+                    <div class="glass-panel image-panel">
+                        <div class="panel-header">
+                            <div class="panel-title-wrap">
+                                <h3 class="panel-title">YOLO Detection Result</h3>
+                                <span class="panel-subtitle" id="detectionStatusBadge">Waiting for image</span>
+                            </div>
+                            <div class="panel-actions">
+                                <button class="btn btn-sm btn-ghost" id="btnToggleSplit" disabled title="Toggle Between Original and Annotated Detection">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="2" y="3" width="20" height="18" rx="2"/>
+                                        <line x1="12" y1="3" x2="12" y2="21"/>
+                                    </svg>
+                                    <span>Compare View</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Result Viewer Container -->
+                        <div class="result-viewer" id="resultViewer">
+                            <!-- Placeholder empty state -->
+                            <div class="empty-result-state" id="emptyResultState">
+                                <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M12 16v-4M12 8h.01"/>
+                                </svg>
+                                <h4>No Results Yet</h4>
+                                <p>Upload an image or pick a sample to view automatic YOLO bounding boxes, defect classifications, and quality metrics.</p>
+                            </div>
+
+                            <!-- Loading Overlay ("Detecting objects...") -->
+                            <div class="inference-loading-overlay" id="imageLoadingOverlay" style="display: none;">
+                                <div class="scanner-laser"></div>
+                                <div class="loading-spinner-ring"></div>
+                                <span class="loading-text" id="loadingMessage">Detecting objects...</span>
+                                <span class="loading-subtext">Evaluating bounding boxes & defect labels</span>
+                            </div>
+
+                            <!-- Annotated Image Display -->
+                            <div class="annotated-wrapper" id="annotatedWrapper" style="display: none;">
+                                <img id="annotatedImageResult" alt="Annotated YOLO Detections" class="responsive-preview-img">
+                            </div>
+                        </div>
+
+                        <!-- Inspection Verdict Banner -->
+                        <div class="verdict-banner" id="verdictBanner" style="display: none;">
+                            <div class="verdict-indicator" id="verdictIndicator"></div>
+                            <div class="verdict-text-wrap">
+                                <span class="verdict-title" id="verdictTitle">DEFECT DETECTED</span>
+                                <span class="verdict-desc" id="verdictDesc">Confidence: 94.25%</span>
+                            </div>
+                        </div>
+
+                        <!-- Metric Cards Bar -->
+                        <div class="metrics-grid" id="metricsGrid" style="display: none;">
+                            <div class="metric-card">
+                                <span class="metric-label">Objects Found</span>
+                                <span class="metric-value" id="metricTotalObjects">0</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">Unique Classes</span>
+                                <span class="metric-value" id="metricUniqueClasses">0</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">Inference Time</span>
+                                <span class="metric-value metric-time" id="metricInferenceTime">0 ms</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">Defects Flagged</span>
+                                <span class="metric-value metric-defects" id="metricDefectsCount">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 3: Detected Objects & Coordinates -->
+                <div class="glass-panel table-panel" id="tablePanel" style="display: none;">
+                    <div class="panel-header">
+                        <div class="panel-title-wrap">
+                            <h3 class="panel-title">Detected Objects & Coordinates</h3>
+                            <span class="panel-subtitle">Itemized Bounding Boxes & Confidence</span>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="detection-table" id="detectionTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Class Label</th>
+                                    <th>Confidence</th>
+                                    <th>Bounding Box [x1, y1, x2, y2]</th>
+                                    <th>Box Size (W × H)</th>
+                                    <th>Verdict Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detectionTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- SECTION 4: Upload New Image (Placed below comparison and detection table) -->
+                <div class="glass-panel upload-panel" id="uploadPanel">
+                    <div class="panel-header">
+                        <div class="panel-title-wrap">
+                            <h3 class="panel-title">Upload New Image</h3>
+                            <span class="panel-subtitle">Upload another image to automatically detect weld defects.</span>
+                        </div>
+                    </div>
+
+                    <div class="upload-card-body">
+                        <div class="dropzone dropzone-bottom" id="uploadDropzone">
+                            <div class="dropzone-content">
+                                <div class="dropzone-icon-box">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="17 8 12 3 7 8"/>
+                                        <line x1="12" y1="3" x2="12" y2="15"/>
+                                    </svg>
+                                </div>
+                                <h4 class="dropzone-heading">Drag and drop weld or target image here</h4>
+                                <p class="dropzone-text">Supported formats: JPG, JPEG, PNG, WEBP (Maximum size: 10 MB)</p>
+                                <button type="button" class="btn btn-primary" id="btnSelectImageBottom">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                                        <polyline points="21 15 16 10 5 21"/>
+                                    </svg>
+                                    <span>Select Image</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden file input for device selection -->
+                    <input type="file" id="imageFileInput" accept=".jpg,.jpeg,.png,.webp" style="display: none;">
+                </div>
+
+            </section>
+
+            <!-- ========================================== -->
+            <!-- MODE 2: LIVE WEBCAM TAB                   -->
+            <!-- ========================================== -->
+            <section class="mode-view" id="webcamMode" role="tabpanel">
+                
+                <!-- Webcam Controls Bar -->
+                <div class="glass-panel controls-bar">
+                    <div class="controls-left">
+                        <!-- Live Detection Toggle & Close Camera -->
+                        <div class="button-group">
+                            <button class="btn btn-primary active" id="btnToggleLiveDetection" title="Toggle real-time YOLO detection">
+                                <span class="toggle-indicator-dot" id="liveToggleDot"></span>
+                                <span id="liveDetectionBtnText">Live Detection</span>
+                            </button>
+                            <button class="btn btn-secondary" id="btnCloseCamera" title="Release camera hardware">
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                                <span>Close Camera</span>
+                            </button>
+                        </div>
+
+                        <!-- Upload Image / Clear Image on Live Webcam Screen -->
+                        <div class="button-group">
+                            <button class="btn btn-secondary" id="btnUploadWebcamImage" title="Upload image or frame for live detection">
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                                <span>Upload Image</span>
+                            </button>
+                            <input type="file" id="webcamFileInput" accept=".jpg,.jpeg,.png,.webp" style="display: none;">
+
+                            <button class="btn btn-secondary" id="btnClearWebcamImage" title="Clear image, reset detections and restore camera stream">
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                    <path d="M3 3v5h5"/>
+                                </svg>
+                                <span>Clear Image</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="controls-right">
+                        <!-- Confidence Threshold -->
+                        <div class="control-group">
+                            <div class="control-label-wrap">
+                                <label for="webcamConfSlider">Confidence Threshold</label>
+                                <span class="badge-value" id="webcamConfValue">25%</span>
+                            </div>
+                            <input type="range" id="webcamConfSlider" min="5" max="95" value="25" step="1" class="custom-slider">
+                        </div>
+
+                        <!-- Rate Throttle (FPS Limit) -->
+                        <div class="control-group">
+                            <div class="control-label-wrap">
+                                <label for="webcamFpsSlider">Target Inference Rate</label>
+                                <span class="badge-value" id="webcamFpsValue">8 FPS</span>
+                            </div>
+                            <input type="range" id="webcamFpsSlider" min="2" max="15" value="8" step="1" class="custom-slider">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Webcam Test Samples Bar -->
+                <div class="samples-bar">
+                    <span class="samples-label">Test Live Feed with Sample:</span>
+                    <div class="samples-list" id="webcamSamplesList">
+                        <button class="sample-chip" data-sample="sample_defect_crack.jpg">
+                            <span class="chip-dot dot-defect"></span> Hot Crack Defect
+                        </button>
+                        <button class="sample-chip" data-sample="sample_bad_weld.jpg">
+                            <span class="chip-dot dot-bad"></span> Bad Weld Sample
+                        </button>
+                        <button class="sample-chip" data-sample="sample_weld_joint.jpg">
+                            <span class="chip-dot dot-joint"></span> Weld Joint Sample
+                        </button>
+                        <button class="sample-chip" id="btnResumeLiveCamera" style="display: none; border-color: var(--accent-cyan); color: #38bdf8;">
+                            <span class="chip-dot" style="background:#38bdf8;box-shadow:0 0 6px #38bdf8;"></span> Resume Live Camera
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Webcam Layout Grid -->
+                <div class="webcam-grid">
+                    
+                    <!-- Left: Real-time Video Stream Stage -->
+                    <div class="glass-panel video-stage-panel">
+                        <div class="panel-header">
+                            <div class="panel-title-wrap">
+                                <h3 class="panel-title">Live Video Feed</h3>
+                                <span class="panel-subtitle" id="cameraStatusBadge">Camera Ready</span>
+                            </div>
+                            <div class="panel-actions">
+                                <span class="hud-pill" id="webcamSourceBadge" style="display: none;">Webcam Stream</span>
+                                <span class="hud-pill" id="webcamResolutionBadge">-- × --</span>
+                                <span class="hud-pill hud-pill-fps" id="webcamFpsBadge">0.0 FPS</span>
+                            </div>
+                        </div>
+
+                        <!-- Video Stream Canvas Container (Also accepts Drag & Drop!) -->
+                        <div class="video-container" id="videoContainer" title="Drag & drop any image here to test detection">
+                            
+                            <!-- Display Box -->
+                            <div class="video-display-box" id="videoDisplayBox">
+                                
+                                <!-- Offline / Start Placeholder -->
+                                <div class="webcam-offline-placeholder" id="webcamOfflinePlaceholder">
+                                    <div class="offline-icon-box">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v1"/>
+                                            <path d="M23 7l-7 5 7 5V7z"/>
+                                            <line x1="2" y1="2" x2="22" y2="22"/>
+                                        </svg>
+                                    </div>
+                                    <h4 id="webcamOfflineHeading">Camera Ready</h4>
+                                    <p id="webcamOfflineMsg">Click Open Camera to start live stream, or upload / choose a sample image.</p>
+                                    <div style="display: flex; gap: 0.6rem; margin-top: 0.75rem;">
+                                        <button type="button" class="btn btn-sm btn-primary" id="btnRetryCamera">
+                                            Open Camera
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('webcamFileInput').click()">
+                                            Upload Image
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Single Visible HTML5 Video Stream Element -->
+                                <video id="webcamLivePreview" autoplay playsinline muted class="webcam-screen" style="display: none;"></video>
+                                
+                                <!-- Annotated YOLO Frame Layer -->
+                                <img id="webcamAnnotatedResult" alt="Live YOLO Stream" class="webcam-screen webcam-screen-overlay" style="display: none;">
+
+                                <!-- HUD Live Overlay -->
+                                <div class="video-hud-overlay" id="videoHudOverlay" style="display: none;">
+                                    <div class="hud-top-left">
+                                        <div class="hud-status-indicator">
+                                            <span class="hud-dot" id="hudDot"></span>
+                                            <span class="hud-text" id="hudStatusText">STREAMING</span>
+                                        </div>
+                                        <span class="hud-subtext" id="hudLatency">Latency: -- ms</span>
+                                    </div>
+                                    <div class="hud-top-right">
+                                        <span class="hud-verdict-pill" id="hudVerdictPill">READY</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Live Inspection Statistics & Class Breakdown -->
+                    <div class="glass-panel webcam-stats-panel">
+                        <div class="panel-header">
+                            <div class="panel-title-wrap">
+                                <h3 class="panel-title">Real-Time Inspection Telemetry</h3>
+                                <span class="panel-subtitle">Live Stream Detection Analytics</span>
+                            </div>
+                        </div>
+
+                        <!-- Live Verdict Summary Banner -->
+                        <div class="live-verdict-card" id="liveVerdictCard">
+                            <div class="live-verdict-status-icon" id="liveVerdictIcon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 14 14"/>
+                                </svg>
+                            </div>
+                            <div class="live-verdict-info">
+                                <span class="live-verdict-tag" id="liveVerdictTag">IDLE</span>
+                                <h4 class="live-verdict-label" id="liveVerdictLabel">Waiting for Feed</h4>
+                                <p class="live-verdict-desc" id="liveVerdictDesc">Turn on camera or upload an image to analyze real-time weld seam quality.</p>
+                            </div>
+                        </div>
+
+                        <!-- Metric Counters -->
+                        <div class="live-metrics-grid">
+                            <div class="live-metric-box">
+                                <span class="live-metric-num" id="liveDetectionsCount">0</span>
+                                <span class="live-metric-title">Active Detections</span>
+                            </div>
+                            <div class="live-metric-box">
+                                <span class="live-metric-num" id="liveInferenceTime">-- ms</span>
+                                <span class="live-metric-title">Inference Time</span>
+                            </div>
+                            <div class="live-metric-box">
+                                <span class="live-metric-num" id="liveTotalProcessed">0</span>
+                                <span class="live-metric-title">Frames Evaluated</span>
+                            </div>
+                            <div class="live-metric-box">
+                                <span class="live-metric-num" id="liveEffectiveFps">0.0</span>
+                                <span class="live-metric-title">Measured FPS</span>
+                            </div>
+                        </div>
+
+                        <!-- Per-Class Live Tally -->
+                        <div class="classes-tally-section">
+                            <h4 class="section-subtitle">Real-Time Class Breakdown</h4>
+                            <div class="classes-tally-list" id="classesTallyList">
+                                <div class="class-tally-empty">No objects currently detected in view</div>
+                            </div>
+                        </div>
+
+                        <!-- Diagnostics & Connection Box -->
+                        <div class="diagnostics-box">
+                            <div class="diag-item">
+                                <span class="diag-key">Active Model</span>
+                                <span class="diag-val" id="diagModelName">{{ model_name }}</span>
+                            </div>
+                            <div class="diag-item">
+                                <span class="diag-key">Compute Engine</span>
+                                <span class="diag-val" id="diagDevice">{{ device }}</span>
+                            </div>
+                            <div class="diag-item">
+                                <span class="diag-key">Frame Transport</span>
+                                <span class="diag-val">Single-Flight Throttled</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <div class="footer-left">
+                <span>YOLO Vision Studio &bull; Localhost Computer Vision Server</span>
+            </div>
+            <div class="footer-right">
+                <span id="footerUptime">Uptime: 0m</span>
+                <span class="footer-divider">&bull;</span>
+                <span>Model: <strong id="footerModel">{{ model_name }}</strong></span>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+    <!-- Application JavaScript Modules -->
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/image_detection.js"></script>
+    <script src="/static/js/webcam.js"></script>
+</body>
+</html>
